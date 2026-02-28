@@ -1,7 +1,7 @@
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "api-template",
+    name := "task-bucket-project-backend",
     version := "0.1.0-SNAPSHOT",
     scalaVersion := "3.7.1",
   )

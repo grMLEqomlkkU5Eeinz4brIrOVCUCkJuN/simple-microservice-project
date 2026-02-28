@@ -22,7 +22,7 @@ object JwtService:
     try
       val decoded = verifier.verify(token)
       val userId = decoded.getSubject.toLong
-      val email = decoded.getClaim("email").asString()
+      val email = Option(decoded.getClaim("email").asString()).getOrElse("")
       (userId, email).valid
     catch
       case e: JWTVerificationException => s"Invalid token: ${e.getMessage}".invalid
@@ -45,8 +45,9 @@ object JwtService:
     try
       val decoded = shareTokenVerifier.verify(token)
       val projectId = decoded.getSubject.toLong
-      val permission = decoded.getClaim("permission").asString()
-      (projectId, permission).valid
+      val permission = Option(decoded.getClaim("permission").asString()).getOrElse("")
+      if permission.isEmpty then "Missing permission claim in token".invalid
+      else (projectId, permission).valid
     catch
       case e: JWTVerificationException => s"Invalid share token: ${e.getMessage}".invalid
       case _: NumberFormatException => "Invalid project ID in token".invalid

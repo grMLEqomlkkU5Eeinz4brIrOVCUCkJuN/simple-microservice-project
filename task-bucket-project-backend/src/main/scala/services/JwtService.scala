@@ -7,24 +7,11 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.exceptions.JWTVerificationException
 import com.typesafe.config.ConfigFactory
 
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-
 object JwtService:
   private val config = ConfigFactory.load()
   private val secret = config.getString("jwt.secret")
-  private val expirationMinutes = config.getLong("jwt.expirationMinutes")
   private val algorithm = Algorithm.HMAC256(secret)
   private val verifier = JWT.require(algorithm).withIssuer("api-template").build()
-
-  def generateToken(userId: Long, email: String): String =
-    JWT.create()
-      .withIssuer("api-template")
-      .withSubject(userId.toString)
-      .withClaim("email", email)
-      .withIssuedAt(Instant.now())
-      .withExpiresAt(Instant.now().plus(expirationMinutes, ChronoUnit.MINUTES))
-      .sign(algorithm)
 
   def validateToken(token: String): Validated[String, (Long, String)] =
     try

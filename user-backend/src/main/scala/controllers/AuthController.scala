@@ -28,7 +28,7 @@ object AuthController:
         errorForm => BadRequest(Json.obj(
           "error" -> "VALIDATION_ERROR",
           "message" -> "Invalid input",
-          "details" -> errorForm.errors.map(e => s"${e.key}: ${e.message}").mkString(", ")
+          "details" -> Json.arr(errorForm.errors.map(e => Json.obj("field" -> e.key, "message" -> e.message))*)
         )),
         (email, password, name) =>
           UserService.register(email, password, name) match
@@ -37,12 +37,13 @@ object AuthController:
               val token = JwtService.generateToken(user.id, user.email)
               Ok(Json.obj(
                 "token" -> token,
-                "user" -> UserResponse.toJson(userResp)
+                "user" -> userResp.toJson
               ))
-            case Left(msg) =>
+            case Left(errors) =>
               BadRequest(Json.obj(
                 "error" -> "REGISTRATION_FAILED",
-                "message" -> msg
+                "message" -> "Registration failed",
+                "details" -> Json.arr(errors.map(e => Json.obj("message" -> e))*)
               ))
       )
 
@@ -53,7 +54,7 @@ object AuthController:
         errorForm => BadRequest(Json.obj(
           "error" -> "VALIDATION_ERROR",
           "message" -> "Invalid input",
-          "details" -> errorForm.errors.map(e => s"${e.key}: ${e.message}").mkString(", ")
+          "details" -> Json.arr(errorForm.errors.map(e => Json.obj("field" -> e.key, "message" -> e.message))*)
         )),
         (email, password) =>
           UserService.authenticate(email, password) match
@@ -62,7 +63,7 @@ object AuthController:
               val token = JwtService.generateToken(user.id, user.email)
               Ok(Json.obj(
                 "token" -> token,
-                "user" -> UserResponse.toJson(userResp)
+                "user" -> userResp.toJson
               ))
             case None =>
               Unauthorized(Json.obj(

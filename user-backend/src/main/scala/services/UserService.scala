@@ -28,8 +28,8 @@ object UserService:
     (validEmail, validPassword, validName).mapN((_, _, _))
   }
 
-  def register(email: String, password: String, name: String): Either[String, UserRow] =
-    validateRegistrationData(email, password, name).toEither.leftMap(_.toList.mkString(", ")) match
+  def register(email: String, password: String, name: String): Either[List[String], UserRow] =
+    validateRegistrationData(email, password, name).toEither.leftMap(_.toList) match
       case Left(errors) => Left(errors)
       case Right((validEmail, validPassword, validName)) =>
         val existing = Await.result(
@@ -37,7 +37,7 @@ object UserService:
           10.seconds
         )
         if existing.isDefined then
-          Left("A user with this email already exists")
+          Left(List("A user with this email already exists"))
         else
           val hash = BCrypt.hashpw(validPassword, BCrypt.gensalt())
           val row = UserRow(email = validEmail, passwordHash = hash, name = validName)

@@ -15,7 +15,7 @@ object UserController:
       UserService.findById(id) match
         case Some(user) =>
           val userResp = UserResponse.fromRow(user)
-          Ok(UserResponse.toJson(userResp))
+          Ok(userResp.toJson)
         case None =>
           NotFound(Json.obj(
             "error" -> "USER_NOT_FOUND",
@@ -28,7 +28,7 @@ object UserController:
       UserService.findByName(name) match
         case Some(user) =>
           val userResp = UserResponse.fromRow(user)
-          Ok(UserResponse.toJson(userResp))
+          Ok(userResp.toJson)
         case None =>
           NotFound(Json.obj(
             "error" -> "USER_NOT_FOUND",

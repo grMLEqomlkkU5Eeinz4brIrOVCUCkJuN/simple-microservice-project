@@ -37,8 +37,8 @@ object ProjectResponse {
       "isPublic" -> project.isPublic,
       "isShared" -> project.isShared,
       "ownerId" -> project.ownerId,
-      "viewPasswordHash" -> project.viewPasswordHash,
-      "editPasswordHash" -> project.editPasswordHash,
+      "hasViewPassword" -> project.viewPasswordHash.isDefined,
+      "hasEditPassword" -> project.editPasswordHash.isDefined,
       "projectName" -> project.projectName,
       "createdAt" -> project.createdAt,
       "updatedAt" -> project.updatedAt

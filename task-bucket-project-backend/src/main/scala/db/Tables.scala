@@ -36,6 +36,16 @@ case class TaskRow(
                   updatedAt: LocalDateTime = LocalDateTime.now()
                   )
 
+case class ProjectPermissionRow(
+                               id: Long = 0L,
+                               projectId: Long,
+                               userId: Long,
+                               permissionLevel: String,
+                               sharedByUserId: Long,
+                               createdAt: LocalDateTime = LocalDateTime.now(),
+                               revokedAt: Option[LocalDateTime] = None
+                               )
+
 class ProjectTable(tag: Tag) extends Table[ProjectRow](tag, "projects"):
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def isPublic = column[Boolean]("is_public")
@@ -72,7 +82,19 @@ class TaskTable(tag: Tag) extends Table[TaskRow](tag, "tasks"):
 
   def * = (id, bucketId, isTaskDone, TaskName, TaskDesc, createdByUserId, createdAt, updatedAt).mapTo[TaskRow]
 
+class ProjectPermissionTable(tag: Tag) extends Table[ProjectPermissionRow](tag, "project_permissions"):
+  def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+  def projectId = column[Long]("project_id")
+  def userId = column[Long]("user_id")
+  def permissionLevel = column[String]("permission_level")
+  def sharedByUserId = column[Long]("shared_by_user_id")
+  def createdAt = column[LocalDateTime]("created_at")
+  def revokedAt = column[Option[LocalDateTime]]("revoked_at")
+
+  def * = (id, projectId, userId, permissionLevel, sharedByUserId, createdAt, revokedAt).mapTo[ProjectPermissionRow]
+
 object Tables:
   val projects = TableQuery[ProjectTable]
   val buckets = TableQuery[BucketTable]
   val tasks = TableQuery[TaskTable]
+  val projectPermissions = TableQuery[ProjectPermissionTable]

@@ -10,8 +10,8 @@ case class ProjectResponse(
                             isPublic: Boolean,
                             isShared: Boolean,
                             ownerId: Long = 0L,
-                            viewPasswordHash: String,
-                            editPasswordHash: String,
+                            viewPasswordHash: Option[String] = None,
+                            editPasswordHash: Option[String] = None,
                             projectName: String,
                             createdAt: LocalDateTime = LocalDateTime.now(),
                             updatedAt: LocalDateTime = LocalDateTime.now()

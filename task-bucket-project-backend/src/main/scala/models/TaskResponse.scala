@@ -10,7 +10,7 @@ case class TaskResponse(
                          bucketId: Long,
                          isTaskDone: Boolean,
                          TaskName: String,
-                         TaskDesc: String,
+                         TaskDesc: Option[String] = None,
                          createdByUserId: Long,
                          createdAt: LocalDateTime = LocalDateTime.now(),
                          updatedAt: LocalDateTime = LocalDateTime.now()

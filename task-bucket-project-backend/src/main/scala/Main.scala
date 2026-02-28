@@ -10,7 +10,6 @@ import com.typesafe.config.ConfigFactory
   val config = ConfigFactory.load()
 
   Server(8080)
-    .addServices(controllers.ItemController)
     .addDocService("/docs")
     .serverBuilderSetup { sb =>
       import scala.jdk.CollectionConverters.*

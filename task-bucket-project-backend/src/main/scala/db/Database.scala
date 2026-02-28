@@ -10,6 +10,8 @@ object Database:
     import scala.concurrent.Await
     import scala.concurrent.duration.*
     val setup = DBIO.seq(
-      Tables.items.schema.createIfNotExists,
+      Tables.projects.schema.createIfNotExists,
+      Tables.buckets.schema.createIfNotExists,
+      Tables.tasks.schema.createIfNotExists,
     )
     Await.result(db.run(setup), 30.seconds)

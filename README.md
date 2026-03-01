@@ -2,9 +2,6 @@
 
 A simple microservice learning project built using bun, scala and nodejs. The intended outcome is a project that will allow users to be able to manage tasks and chat with each other.
 
-# Structure
-
-![Kanbana architecture diagram](./assets/kanbana.drawio.png)
 
 # Decisons for project
 

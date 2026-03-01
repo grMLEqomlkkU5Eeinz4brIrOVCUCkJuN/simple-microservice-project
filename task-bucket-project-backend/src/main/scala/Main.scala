@@ -12,6 +12,11 @@ import com.typesafe.config.ConfigFactory
   val port = config.getInt("app.http.port")
 
   Server(port)
+    .addServices(controllers.ProjectController)
+    .addServices(controllers.BucketController)
+    .addServices(controllers.TaskController)
+    .addServices(controllers.ProjectPermissionController)
+    .addServices(controllers.ProjectShareController)
     .addDocService("/docs")
     .serverBuilderSetup { sb =>
       import scala.jdk.CollectionConverters.*

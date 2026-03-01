@@ -11,6 +11,7 @@ import com.typesafe.config.ConfigFactory
 
   Server(8080)
     .addServices(controllers.AuthController)
+    .addServices(controllers.UserController)
     .addDocService("/docs")
     .serverBuilderSetup { sb =>
       import scala.jdk.CollectionConverters.*

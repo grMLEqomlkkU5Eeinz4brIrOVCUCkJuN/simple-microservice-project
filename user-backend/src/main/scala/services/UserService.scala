@@ -63,3 +63,30 @@ object UserService:
       db.run(Tables.users.filter(_.name === name).result.headOption),
       10.seconds
     )
+
+  def findByEmail(email: String): Option[UserRow] =
+    Await.result(
+      db.run(Tables.users.filter(_.email === email).result.headOption),
+      10.seconds
+    )
+
+  def searchByName(query: String): Seq[UserRow] =
+    Await.result(
+      db.run(Tables.users.filter(_.name.toLowerCase like s"%${query.toLowerCase}%").result),
+      10.seconds
+    )
+
+  def searchByEmail(query: String): Seq[UserRow] =
+    Await.result(
+      db.run(Tables.users.filter(_.email.toLowerCase like s"%${query.toLowerCase}%").result),
+      10.seconds
+    )
+
+  def search(query: String): Seq[UserRow] =
+    Await.result(
+      db.run(Tables.users.filter(u =>
+        (u.name.toLowerCase like s"%${query.toLowerCase}%") ||
+          (u.email.toLowerCase like s"%${query.toLowerCase}%")
+      ).result),
+      10.seconds
+    )

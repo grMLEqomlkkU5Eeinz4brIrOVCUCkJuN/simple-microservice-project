@@ -3,7 +3,6 @@ user-backend:
 [] Database indecies (no idea how with slick tbh)
 
 task-bucket-backend
-[] base components of API
 [] Redis
 [] Database indecies
 

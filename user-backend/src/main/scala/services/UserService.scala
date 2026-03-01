@@ -6,6 +6,7 @@ import db.{Database, Tables, UserRow}
 import org.mindrot.jbcrypt.BCrypt
 import slick.jdbc.MySQLProfile.api.*
 
+import java.util.UUID
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future}
 
@@ -40,17 +41,41 @@ object UserService:
           Left(List("A user with this email already exists"))
         else
           val hash = BCrypt.hashpw(validPassword, BCrypt.gensalt())
-          val row = UserRow(email = validEmail, passwordHash = hash, name = validName)
+          val token = UUID.randomUUID().toString
+          val row = UserRow(email = validEmail, passwordHash = hash, name = validName, verificationToken = Some(token))
           val insertAction = (Tables.users returning Tables.users.map(_.id) into ((user, id) => user.copy(id = id))) += row
           val created = Await.result(db.run(insertAction), 10.seconds)
+          EmailService.sendVerificationEmail(validEmail, token)
           Right(created)
 
-  def authenticate(email: String, password: String): Option[UserRow] =
+  def verifyEmail(token: String): Option[UserRow] =
+    val userOpt = Await.result(
+      db.run(Tables.users.filter(_.verificationToken === Option(token)).result.headOption),
+      10.seconds
+    )
+    userOpt.map { user =>
+      val updateAction = Tables.users
+        .filter(_.id === user.id)
+        .map(u => (u.emailVerified, u.verificationToken))
+        .update((true, None))
+      Await.result(db.run(updateAction), 10.seconds)
+      user.copy(emailVerified = true, verificationToken = None)
+    }
+
+  def authenticate(email: String, password: String): Either[String, UserRow] =
     val userOpt = Await.result(
       db.run(Tables.users.filter(_.email === email).result.headOption),
       10.seconds
     )
-    userOpt.filter(u => BCrypt.checkpw(password, u.passwordHash))
+    userOpt match
+      case Some(user) if !BCrypt.checkpw(password, user.passwordHash) =>
+        Left("Invalid email or password")
+      case Some(user) if !user.emailVerified =>
+        Left("Email not verified. Please check your inbox for the verification link.")
+      case Some(user) =>
+        Right(user)
+      case None =>
+        Left("Invalid email or password")
 
   def findById(id: Long): Option[UserRow] =
     Await.result(

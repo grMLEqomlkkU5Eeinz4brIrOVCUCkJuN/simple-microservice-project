@@ -3,7 +3,7 @@ package controllers
 import com.greenfossil.thorium.{*, given}
 import com.greenfossil.commons.json.Json
 import com.greenfossil.data.mapping.Mapping.*
-import com.linecorp.armeria.server.annotation.Post
+import com.linecorp.armeria.server.annotation.{Get, Post, Param}
 
 import models.UserResponse
 import services.{JwtService, UserService}
@@ -33,11 +33,8 @@ object AuthController:
         (email, password, name) =>
           UserService.register(email, password, name) match
             case Right(user) =>
-              val userResp = UserResponse.fromRow(user)
-              val token = JwtService.generateToken(user.id, user.email)
               Ok(Json.obj(
-                "token" -> token,
-                "user" -> userResp.toJson
+                "message" -> "Registration successful. Please check your email to verify your account."
               ))
             case Left(errors) =>
               BadRequest(Json.obj(
@@ -58,16 +55,32 @@ object AuthController:
         )),
         (email, password) =>
           UserService.authenticate(email, password) match
-            case Some(user) =>
+            case Right(user) =>
               val userResp = UserResponse.fromRow(user)
               val token = JwtService.generateToken(user.id, user.email)
               Ok(Json.obj(
                 "token" -> token,
                 "user" -> userResp.toJson
               ))
-            case None =>
+            case Left(error) =>
               Unauthorized(Json.obj(
                 "error" -> "AUTH_FAILED",
-                "message" -> "Invalid email or password"
+                "message" -> error
               ))
       )
+
+  @Get("/api/auth/verify")
+  def verify(@Param("token") token: String) = Action:
+    implicit request =>
+      UserService.verifyEmail(token) match
+        case Some(user) =>
+          val userResp = UserResponse.fromRow(user)
+          Ok(Json.obj(
+            "message" -> "Email verified successfully. You can now log in.",
+            "user" -> userResp.toJson
+          ))
+        case None =>
+          BadRequest(Json.obj(
+            "error" -> "VERIFICATION_FAILED",
+            "message" -> "Invalid or expired verification token"
+          ))

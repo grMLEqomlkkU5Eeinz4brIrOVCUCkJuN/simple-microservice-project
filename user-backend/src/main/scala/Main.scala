@@ -9,7 +9,9 @@ import com.typesafe.config.ConfigFactory
 
   val config = ConfigFactory.load()
 
-  Server(8080)
+  val port = config.getInt("app.http.port")
+
+  Server(port)
     .addServices(controllers.AuthController)
     .addServices(controllers.UserController)
     .addDocService("/docs")

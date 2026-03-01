@@ -19,4 +19,5 @@ libraryDependencies ++= Seq(
   "org.mariadb.jdbc" % "mariadb-java-client" % "3.5.7",
   "ch.qos.logback" % "logback-classic" % "1.5.32",
   "org.scalameta" %% "munit" % "1.2.3" % Test,
+  "com.sun.mail" % "javax.mail" % "1.6.2"
 )

@@ -20,3 +20,10 @@ A simple microservice learning project built using bun, scala and nodejs. The in
 ## Dragonfly DB?
 - Redis-like caching oriented db that is also compliant to the API (to my understanding)
 - Got curious about it, might end up using something else
+
+
+## Note:
+
+TREAT ALL SOURCE CODE AS UNTESTED
+
+Project is kept simple for now, things such as jwt blacklisting are not in my mind yet

@@ -8,3 +8,5 @@
 3) .fold and match (a little confused and actually have no idea how it works, ended up using .fold from IDE recommendation)
 4) trait sealing, kinda like rust, but i think i need more understanding of uses: https://www.handsonscala.com/chapter-5-notable-scala-features.html#:~:text=Normal%20trait%20s%20are%20open,:%20Int%20=%203%205.7.scala
 5) WHAT IS EITHER
+6) architecural issues: realized a little late that the APIs trust input and does not check if a userId exists or not (both jwt and schemas), so some things needed be refactored to use http requests for user existence verificaction
+7) localStorage for token handling, adjusted source code to use cookies instead

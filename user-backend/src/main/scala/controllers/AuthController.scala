@@ -4,11 +4,15 @@ import com.greenfossil.thorium.{*, given}
 import com.greenfossil.commons.json.Json
 import com.greenfossil.data.mapping.Mapping.*
 import com.linecorp.armeria.server.annotation.{Get, Post, Param}
+import com.typesafe.config.ConfigFactory
 
 import models.UserResponse
 import services.{JwtService, UserService}
 
 object AuthController:
+
+  private val config = ConfigFactory.load()
+  private val cookieMaxAge = config.getLong("cookie.authTokenMaxAgeSeconds")
 
   private val registerForm = tuple(
     "email" -> email,
@@ -58,10 +62,10 @@ object AuthController:
             case Right(user) =>
               val userResp = UserResponse.fromRow(user)
               val token = JwtService.generateToken(user.id, user.email)
+              val cookie = CookieUtil.bakeCookie("auth_token", token, Some(cookieMaxAge))
               Ok(Json.obj(
-                "token" -> token,
                 "user" -> userResp.toJson
-              ))
+              )).withCookies(cookie)
             case Left(error) =>
               Unauthorized(Json.obj(
                 "error" -> "AUTH_FAILED",

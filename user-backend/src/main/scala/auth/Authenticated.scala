@@ -28,9 +28,7 @@ object Authenticated:
         ))
 
   private def extractUser(request: Request): Option[AuthenticatedUser] =
-    request.authorization.flatMap { header =>
-      if header.startsWith("Bearer ") then
-        val token = header.substring(7)
-        JwtService.validateToken(token).toOption.map((id, email) => AuthenticatedUser(id, email))
-      else None
+    request.findCookie("auth_token").flatMap { cookie =>
+      val token = cookie.value()
+      JwtService.validateToken(token).toOption.map((id, email) => AuthenticatedUser(id, email))
     }

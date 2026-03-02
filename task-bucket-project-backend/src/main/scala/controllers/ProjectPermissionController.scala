@@ -8,7 +8,7 @@ import com.linecorp.armeria.server.annotation.{Get, Post, Put, Delete, Param}
 
 import auth.Authenticated
 import models.ProjectPermissionResponse
-import services.{ProjectService, ProjectPermissionService}
+import services.{ProjectService, ProjectPermissionService, UserServiceClient}
 
 object ProjectPermissionController:
 
@@ -63,6 +63,11 @@ object ProjectPermissionController:
                     BadRequest(Json.obj(
                       "error" -> "VALIDATION_ERROR",
                       "message" -> "Permission level must be READONLY or EDIT"
+                    ))
+                  else if !UserServiceClient.userExists(userIdLong) then
+                    BadRequest(Json.obj(
+                      "error" -> "USER_NOT_FOUND",
+                      "message" -> s"User with id $userIdLong does not exist"
                     ))
                   else
                     ProjectPermissionService.share(projectId, userIdLong, permissionLevel, user.id).toEither match {

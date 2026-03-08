@@ -1,12 +1,31 @@
 import type { AuthUser } from "../service/jwtService";
-import { userExists } from "../service/userService";
+import {
+  userExists,
+  getUserInfo,
+  type UserInfo,
+} from "../service/userService";
 import prisma from "../db";
-import type { Chat, Message } from "../generated/prisma/client";
+import type {
+  Chat,
+  Message,
+} from "../generated/prisma/client";
 
 interface MessagesResult {
   messages: Message[];
   nextCursor: number | null;
 }
+
+interface ParticipantInfo {
+  userId: number;
+  name: string | null;
+  email: string | null;
+}
+
+interface ChatWithDetails extends Chat {
+  participants: ParticipantInfo[];
+  messages?: Message[];
+}
+
 interface SuccessResult<T> {
   data: T;
   status: number;
@@ -19,10 +38,25 @@ interface ErrorResult {
 
 type Result<T> = SuccessResult<T> | ErrorResult;
 
+async function enrichParticipants(
+  participants: { userId: number }[],
+): Promise<ParticipantInfo[]> {
+  return Promise.all(
+    participants.map(async (p) => {
+      const info = await getUserInfo(p.userId);
+      return {
+        userId: p.userId,
+        name: info?.name ?? null,
+        email: info?.email ?? null,
+      };
+    }),
+  );
+}
+
 export async function createOrGetChat(
   user: AuthUser,
   participantId: number,
-): Promise<Result<Chat>> {
+): Promise<Result<ChatWithDetails>> {
   if (participantId === user.id) {
     return {
       error: "Cannot create a chat with yourself",
@@ -53,7 +87,13 @@ export async function createOrGetChat(
   });
 
   if (existingChat) {
-    return { data: existingChat, status: 200 };
+    const participants = await enrichParticipants(
+      existingChat.participants,
+    );
+    return {
+      data: { ...existingChat, participants },
+      status: 200,
+    };
   }
 
   const chat = await prisma.chat.create({
@@ -68,12 +108,53 @@ export async function createOrGetChat(
     include: { participants: true },
   });
 
-  return { data: chat, status: 201 };
+  const participants = await enrichParticipants(
+    chat.participants,
+  );
+  return {
+    data: { ...chat, participants },
+    status: 201,
+  };
+}
+
+export async function getChat(
+  user: AuthUser,
+  chatId: number,
+): Promise<Result<ChatWithDetails>> {
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
+    include: {
+      participants: true,
+      messages: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
+  });
+
+  if (!chat) {
+    return { error: "Chat not found", status: 404 };
+  }
+
+  const isParticipant = chat.participants.some(
+    (p) => p.userId === user.id,
+  );
+  if (!isParticipant) {
+    return { error: "Access denied", status: 403 };
+  }
+
+  const participants = await enrichParticipants(
+    chat.participants,
+  );
+  return {
+    data: { ...chat, participants },
+    status: 200,
+  };
 }
 
 export async function listChats(
   user: AuthUser,
-): Promise<Result<Chat[]>> {
+): Promise<Result<ChatWithDetails[]>> {
   const chats = await prisma.chat.findMany({
     where: {
       participants: { some: { userId: user.id } },
@@ -88,7 +169,81 @@ export async function listChats(
     orderBy: { updatedAt: "desc" },
   });
 
-  return { data: chats, status: 200 };
+  const enriched = await Promise.all(
+    chats.map(async (chat) => {
+      const participants = await enrichParticipants(
+        chat.participants,
+      );
+      return { ...chat, participants };
+    }),
+  );
+
+  return { data: enriched, status: 200 };
+}
+
+export async function deleteChat(
+  user: AuthUser,
+  chatId: number,
+): Promise<Result<{ message: string }>> {
+  const participant =
+    await prisma.chatParticipant.findUnique({
+      where: {
+        userId_chatId: { userId: user.id, chatId },
+      },
+    });
+
+  if (!participant) {
+    return { error: "Access denied", status: 403 };
+  }
+
+  // Remove user from chat
+  await prisma.chatParticipant.delete({
+    where: {
+      userId_chatId: { userId: user.id, chatId },
+    },
+  });
+
+  // If no participants remain, delete the chat entirely
+  const remaining =
+    await prisma.chatParticipant.count({
+      where: { chatId },
+    });
+
+  if (remaining === 0) {
+    await prisma.chat.delete({
+      where: { id: chatId },
+    });
+  }
+
+  return {
+    data: { message: "Left chat successfully" },
+    status: 200,
+  };
+}
+
+export async function getParticipants(
+  user: AuthUser,
+  chatId: number,
+): Promise<Result<ParticipantInfo[]>> {
+  const participant =
+    await prisma.chatParticipant.findUnique({
+      where: {
+        userId_chatId: { userId: user.id, chatId },
+      },
+    });
+
+  if (!participant) {
+    return { error: "Access denied", status: 403 };
+  }
+
+  const participants =
+    await prisma.chatParticipant.findMany({
+      where: { chatId },
+    });
+
+  const enriched =
+    await enrichParticipants(participants);
+  return { data: enriched, status: 200 };
 }
 
 export async function getMessages(
@@ -137,6 +292,13 @@ export async function sendMessage(
   if (!content || content.trim().length === 0) {
     return {
       error: "Message content is required",
+      status: 400,
+    };
+  }
+
+  if (content.length > 5000) {
+    return {
+      error: "Message content exceeds maximum length of 5000 characters",
       status: 400,
     };
   }

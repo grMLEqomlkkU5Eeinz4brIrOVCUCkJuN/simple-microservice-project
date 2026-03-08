@@ -27,6 +27,7 @@
 		"@socket.io/bun-engine": "^0.1.0",
 		"elysia": "^1.4.27",
 		"jose": "^6.1.3",
+		"redis": "^5.11.0",
 		"socket.io": "^4.8.3"
 	}
 }

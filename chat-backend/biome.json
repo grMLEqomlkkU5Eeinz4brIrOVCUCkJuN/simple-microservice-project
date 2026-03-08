@@ -10,8 +10,8 @@
 		"enabled": true,
 		"formatWithErrors": false,
 		"attributePosition": "auto",
-		"indentStyle": "space",
-		"indentWidth": 2,
+		"indentStyle": "tab",
+		"indentWidth": 4,
 		"lineWidth": 80,
 		"lineEnding": "lf"
 	},

@@ -27,6 +27,35 @@ function parseCookie(
   return match?.split("=").slice(1).join("=");
 }
 
+function isValidSendMessage(
+  data: unknown,
+): data is { chatId: number; content: string } {
+  if (typeof data !== "object" || data === null)
+    return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.chatId === "number" &&
+    Number.isInteger(d.chatId) &&
+    d.chatId > 0 &&
+    typeof d.content === "string" &&
+    d.content.trim().length > 0 &&
+    d.content.length <= 5000
+  );
+}
+
+function isValidTyping(
+  data: unknown,
+): data is { chatId: number } {
+  if (typeof data !== "object" || data === null)
+    return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.chatId === "number" &&
+    Number.isInteger(d.chatId) &&
+    d.chatId > 0
+  );
+}
+
 export function createSocketServer(
   server: unknown,
 ): IOServer {
@@ -87,86 +116,123 @@ export function createSocketServer(
     );
 
     // Handle sending messages
-    socket.on(
-      "send_message",
-      async (data: {
-        chatId: number;
-        content: string;
-      }) => {
-        const { chatId, content } = data;
+    socket.on("send_message", async (data: unknown) => {
+      if (!isValidSendMessage(data)) {
+        socket.emit("error", {
+          message:
+            "Invalid message data: chatId (positive integer) and content (1-5000 chars) required",
+        });
+        return;
+      }
 
-        const result = await sendMessage(
-          user,
-          chatId,
-          content,
-        );
+      const { chatId, content } = data;
 
-        if ("error" in result) {
-          socket.emit("error", {
-            message: result.error,
-          });
-          return;
-        }
+      const result = await sendMessage(
+        user,
+        chatId,
+        content,
+      );
 
-        // Find other participants and emit
-        const participants =
-          await prisma.chatParticipant.findMany({
-            where: { chatId },
-          });
+      if ("error" in result) {
+        socket.emit("error", {
+          message: result.error,
+        });
+        return;
+      }
 
-        const otherParticipantIds = participants
-          .map((p) => p.userId)
-          .filter((id) => id !== user.id);
+      // Find other participants and emit
+      const participants =
+        await prisma.chatParticipant.findMany({
+          where: { chatId },
+        });
 
-        const messagePayload = {
-          ...result.data,
-          chatId,
-        };
+      const otherParticipantIds = participants
+        .map((p) => p.userId)
+        .filter((id) => id !== user.id);
 
-        for (const participantId of otherParticipantIds) {
-          io!
-            .to(`user:${participantId}`)
-            .emit("message_received", messagePayload);
-        }
+      const messagePayload = {
+        ...result.data,
+        chatId,
+      };
 
-        socket.emit("message_sent", messagePayload);
-      },
-    );
+      for (const participantId of otherParticipantIds) {
+        io!
+          .to(`user:${participantId}`)
+          .emit("message_received", messagePayload);
+      }
+
+      socket.emit("message_sent", messagePayload);
+    });
 
     // Typing indicator
-    socket.on(
-      "typing",
-      async (data: { chatId: number }) => {
-        const { chatId } = data;
+    socket.on("typing", async (data: unknown) => {
+      if (!isValidTyping(data)) return;
 
-        const participant =
-          await prisma.chatParticipant.findUnique({
-            where: {
-              userId_chatId: {
-                userId: user.id,
-                chatId,
-              },
-            },
-          });
+      const { chatId } = data;
 
-        if (!participant) return;
-
-        const participants =
-          await prisma.chatParticipant.findMany({
-            where: {
+      const participant =
+        await prisma.chatParticipant.findUnique({
+          where: {
+            userId_chatId: {
+              userId: user.id,
               chatId,
-              userId: { not: user.id },
             },
-          });
+          },
+        });
 
-        for (const p of participants) {
-          io!.to(`user:${p.userId}`).emit("user_typing", {
+      if (!participant) return;
+
+      const participants =
+        await prisma.chatParticipant.findMany({
+          where: {
+            chatId,
+            userId: { not: user.id },
+          },
+        });
+
+      for (const p of participants) {
+        io!.to(`user:${p.userId}`).emit("user_typing", {
+          chatId,
+          userId: user.id,
+        });
+      }
+    });
+
+    // Stop typing indicator
+    socket.on("stop_typing", async (data: unknown) => {
+      if (!isValidTyping(data)) return;
+
+      const { chatId } = data;
+
+      const participant =
+        await prisma.chatParticipant.findUnique({
+          where: {
+            userId_chatId: {
+              userId: user.id,
+              chatId,
+            },
+          },
+        });
+
+      if (!participant) return;
+
+      const participants =
+        await prisma.chatParticipant.findMany({
+          where: {
+            chatId,
+            userId: { not: user.id },
+          },
+        });
+
+      for (const p of participants) {
+        io!
+          .to(`user:${p.userId}`)
+          .emit("user_stop_typing", {
             chatId,
             userId: user.id,
           });
-        }
-      },
-    );
+      }
+    });
 
     socket.on("disconnect", () => {
       const sockets = userSockets.get(user.id);

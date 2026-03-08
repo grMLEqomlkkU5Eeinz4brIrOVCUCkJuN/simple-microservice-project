@@ -59,6 +59,7 @@ object UserService:
         .map(u => (u.emailVerified, u.verificationToken))
         .update((true, None))
       Await.result(db.run(updateAction), 10.seconds)
+      RedisService.invalidateUser(user.id)
       user.copy(emailVerified = true, verificationToken = None)
     }
 

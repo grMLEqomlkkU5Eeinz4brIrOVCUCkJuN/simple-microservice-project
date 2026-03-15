@@ -20,13 +20,13 @@ object TaskController:
       InternalServerError(Json.obj("error" -> "OPERATION_FAILED", "message" -> message))
 
   private val createTaskForm = tuple(
-    "TaskName" -> nonEmptyText,
-    "TaskDesc" -> optional[String]
+    "taskName" -> nonEmptyText,
+    "taskDesc" -> optional[String]
   )
 
   private val updateTaskForm = tuple(
-    "TaskName" -> optional[String],
-    "TaskDesc" -> optional[String],
+    "taskName" -> optional[String],
+    "taskDesc" -> optional[String],
     "isTaskDone" -> optional[Boolean]
   )
 

@@ -29,8 +29,8 @@ case class TaskRow(
                   id: Long = 0L,
                   bucketId: Long,
                   isTaskDone: Boolean,
-                  TaskName: String,
-                  TaskDesc: Option[String] = None,
+                  taskName: String,
+                  taskDesc: Option[String] = None,
                   createdByUserId: Long,
                   createdAt: LocalDateTime = LocalDateTime.now(),
                   updatedAt: LocalDateTime = LocalDateTime.now()
@@ -74,13 +74,13 @@ class TaskTable(tag: Tag) extends Table[TaskRow](tag, "tasks"):
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
   def bucketId = column[Long]("bucket_id")
   def isTaskDone = column[Boolean]("is_task_done")
-  def TaskName = column[String]("task_name")
-  def TaskDesc = column[Option[String]]("task_desc")
+  def taskName = column[String]("task_name")
+  def taskDesc = column[Option[String]]("task_desc")
   def createdByUserId = column[Long]("created_by_user_id")
   def createdAt = column[LocalDateTime]("created_at")
   def updatedAt = column[LocalDateTime]("updated_at")
 
-  def * = (id, bucketId, isTaskDone, TaskName, TaskDesc, createdByUserId, createdAt, updatedAt).mapTo[TaskRow]
+  def * = (id, bucketId, isTaskDone, taskName, taskDesc, createdByUserId, createdAt, updatedAt).mapTo[TaskRow]
 
 class ProjectPermissionTable(tag: Tag) extends Table[ProjectPermissionRow](tag, "project_permissions"):
   def id = column[Long]("id", O.PrimaryKey, O.AutoInc)

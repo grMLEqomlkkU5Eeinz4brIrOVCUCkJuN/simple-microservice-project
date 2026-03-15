@@ -173,12 +173,17 @@ object BucketService {
 
   def delete(id: Long): Boolean = {
     try {
-      val query = Tables.buckets.filter(_.id === id).delete
-      val result = Await.result(db.run(query), 10.seconds)
-      result > 0
+      val deleteAction = DBIO.seq(
+        // Delete all tasks in this bucket first
+        Tables.tasks.filter(_.bucketId === id).delete,
+        // Then delete the bucket
+        Tables.buckets.filter(_.id === id).delete
+      ).transactionally
+      Await.result(db.run(deleteAction), 10.seconds)
+      true
     } catch {
       case e: Exception =>
-        logger.error("Operation failed", e)
+        logger.error("Failed to delete bucket with cascade", e)
         false
     }
   }
@@ -239,10 +244,27 @@ object BucketService {
   def getByProjectIdWithStats(projectId: Long): Seq[(BucketResponse, Long, Long)] = {
     try {
       val buckets = getByProjectId(projectId)
+      if buckets.isEmpty then return Seq.empty
+
+      val bucketIds = buckets.map(_.id)
+
+      // Single query to get total task counts per bucket
+      val totalQuery = Tables.tasks
+        .filter(_.bucketId inSet bucketIds)
+        .groupBy(_.bucketId)
+        .map { case (bucketId, tasks) => (bucketId, tasks.length) }
+      val totalCounts = Await.result(db.run(totalQuery.result), 10.seconds).toMap
+
+      // Single query to get completed task counts per bucket
+      val completedQuery = Tables.tasks
+        .filter(_.bucketId inSet bucketIds)
+        .filter(_.isTaskDone === true)
+        .groupBy(_.bucketId)
+        .map { case (bucketId, tasks) => (bucketId, tasks.length) }
+      val completedCounts = Await.result(db.run(completedQuery.result), 10.seconds).toMap
+
       buckets.map { bucket =>
-        val totalTasks = TaskService.countByBucketId(bucket.id)
-        val completedTasks = TaskService.countCompletedByBucketId(bucket.id)
-        (bucket, totalTasks, completedTasks)
+        (bucket, totalCounts.getOrElse(bucket.id, 0).toLong, completedCounts.getOrElse(bucket.id, 0).toLong)
       }
     } catch {
       case e: Exception =>

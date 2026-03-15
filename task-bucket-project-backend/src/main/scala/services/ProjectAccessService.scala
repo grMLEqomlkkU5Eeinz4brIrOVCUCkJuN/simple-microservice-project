@@ -70,11 +70,7 @@ object ProjectAccessService {
 
   def getAccessibleProjects(userId: Long): Seq[ProjectResponse] = {
     val ownedProjects = ProjectService.getByOwnerId(userId)
-
-    val sharedProjects = ProjectPermissionService
-      .getUserPermissions(userId)
-      .flatMap(perm => ProjectService.getById(perm.projectId))
-
+    val sharedProjects = ProjectService.getSharedWithMe(userId)
     (ownedProjects ++ sharedProjects).distinctBy(_.id)
   }
 

@@ -11,6 +11,12 @@ case class UserResponse(id: Long, email: String, name: String):
       "name" -> name
     )
 
+  def toPublicJson: JsValue =
+    Json.obj(
+      "id" -> id,
+      "name" -> name
+    )
+
 object UserResponse:
   def fromRow(row: UserRow): UserResponse =
     UserResponse(row.id, row.email, row.name)

@@ -10,6 +10,7 @@ case class UserRow(
                     name: String,
                     emailVerified: Boolean = false,
                     verificationToken: Option[String] = None,
+                    verificationTokenExpiresAt: Option[LocalDateTime] = None,
                     createdAt: LocalDateTime = LocalDateTime.now()
                   )
 
@@ -20,8 +21,9 @@ class UsersTable(tag: Tag) extends Table[UserRow](tag, "users"):
   def name = column[String]("name", O.Length(255))
   def emailVerified = column[Boolean]("email_verified", O.Default(false))
   def verificationToken = column[Option[String]]("verification_token", O.Length(255), O.Default(None))
+  def verificationTokenExpiresAt = column[Option[LocalDateTime]]("verification_token_expires_at", O.Default(None))
   def createdAt = column[LocalDateTime]("created_at")
-  def * = (id, email, passwordHash, name, emailVerified, verificationToken, createdAt).mapTo[UserRow]
+  def * = (id, email, passwordHash, name, emailVerified, verificationToken, verificationTokenExpiresAt, createdAt).mapTo[UserRow]
 
 object Tables:
   val users = TableQuery[UsersTable]

@@ -4,9 +4,12 @@ import com.greenfossil.commons.json.Json
 import com.linecorp.armeria.common.{HttpRequest, HttpResponse, HttpStatus, MediaType}
 import com.linecorp.armeria.server.{HttpService, ServiceRequestContext, SimpleDecoratingHttpService}
 import exceptions.AppException
+import org.slf4j.LoggerFactory
 import scala.util.control.NonFatal
 
 class GlobalExceptionHandler(delegate: HttpService) extends SimpleDecoratingHttpService(delegate) {
+
+  private val logger = LoggerFactory.getLogger(classOf[GlobalExceptionHandler])
 
   override def serve(ctx: ServiceRequestContext, req: HttpRequest): HttpResponse = {
     try {
@@ -14,7 +17,8 @@ class GlobalExceptionHandler(delegate: HttpService) extends SimpleDecoratingHttp
       response.recover {
         case ex: AppException =>
           createErrorResponse(ex.httpStatus, getErrorName(ex), ex.getMessage)
-        case _: Throwable =>
+        case ex: Throwable =>
+          logger.error("Unhandled exception in request handler", ex)
           createErrorResponse(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "INTERNAL_SERVER_ERROR",
@@ -24,7 +28,8 @@ class GlobalExceptionHandler(delegate: HttpService) extends SimpleDecoratingHttp
     } catch {
       case ex: AppException =>
         createErrorResponse(ex.httpStatus, getErrorName(ex), ex.getMessage)
-      case NonFatal(_) =>
+      case ex if NonFatal(ex) =>
+        logger.error("Unhandled exception in request handler", ex)
         createErrorResponse(
           HttpStatus.INTERNAL_SERVER_ERROR,
           "INTERNAL_SERVER_ERROR",

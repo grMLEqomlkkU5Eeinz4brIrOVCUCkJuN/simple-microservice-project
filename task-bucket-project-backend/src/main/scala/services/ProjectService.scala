@@ -190,12 +190,21 @@ object ProjectService {
 
   def delete(id: Long): Boolean = {
     try {
-      val query = Tables.projects.filter(_.id === id).delete
-      val result = Await.result(db.run(query), 10.seconds)
-      result > 0
+      val deleteAction = DBIO.seq(
+        // Delete tasks belonging to this project's buckets
+        Tables.tasks.filter(_.bucketId in Tables.buckets.filter(_.projectId === id).map(_.id)).delete,
+        // Delete buckets belonging to this project
+        Tables.buckets.filter(_.projectId === id).delete,
+        // Delete all permissions
+        Tables.projectPermissions.filter(_.projectId === id).delete,
+        // Delete the project itself
+        Tables.projects.filter(_.id === id).delete
+      ).transactionally
+      Await.result(db.run(deleteAction), 10.seconds)
+      true
     } catch {
       case e: Exception =>
-        logger.error("Operation failed", e)
+        logger.error("Failed to delete project with cascade", e)
         false
     }
   }
@@ -256,10 +265,7 @@ object ProjectService {
       getById(projectId) match {
         case Some(project) =>
           val bucketCount = BucketService.countByProjectId(projectId)
-          val taskCount = {
-            val buckets = BucketService.getByProjectId(projectId)
-            buckets.map(b => TaskService.countByBucketId(b.id)).sum
-          }
+          val taskCount = countTasksByProjectId(projectId)
           Some((project, bucketCount, taskCount))
         case None => None
       }
@@ -270,12 +276,30 @@ object ProjectService {
     }
   }
 
+  private def countTasksByProjectId(projectId: Long): Long = {
+    try {
+      val query = Tables.tasks
+        .filter(_.bucketId in Tables.buckets.filter(_.projectId === projectId).map(_.id))
+        .length
+      Await.result(db.run(query.result), 10.seconds).toLong
+    } catch {
+      case e: Exception =>
+        logger.error("Operation failed", e)
+        0L
+    }
+  }
+
   def getSharedWithMe(userId: Long): Seq[ProjectResponse] = {
     try {
-      ProjectPermissionService
-        .getUserPermissions(userId)
-        .flatMap(perm => getById(perm.projectId))
-        .distinctBy(_.id)
+      val query = Tables.projects
+        .filter(_.id in Tables.projectPermissions
+          .filter(_.userId === userId)
+          .filter(_.revokedAt.isEmpty)
+          .map(_.projectId)
+        )
+        .sortBy(_.createdAt.desc)
+      val result = Await.result(db.run(query.result), 10.seconds)
+      result.map(ProjectResponse.fromRow)
     } catch {
       case e: Exception =>
         logger.error("Operation failed", e)

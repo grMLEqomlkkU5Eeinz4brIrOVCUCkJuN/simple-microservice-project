@@ -17,6 +17,7 @@ object Database:
     // Add new columns for email verification (safe to run repeatedly)
     val addColumns = DBIO.seq(
       sqlu"""ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE""",
-      sqlu"""ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(255) DEFAULT NULL"""
+      sqlu"""ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token VARCHAR(255) DEFAULT NULL""",
+      sqlu"""ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_token_expires_at DATETIME DEFAULT NULL"""
     )
     Await.result(db.run(addColumns), 30.seconds)

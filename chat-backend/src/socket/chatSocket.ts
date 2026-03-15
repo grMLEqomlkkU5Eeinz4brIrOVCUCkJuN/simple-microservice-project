@@ -1,5 +1,6 @@
 import { Server } from "socket.io";
 import type { Server as IOServer } from "socket.io";
+import type { Server as HttpServer } from "node:http";
 import {
   validateToken,
   type AuthUser,
@@ -20,11 +21,19 @@ function parseCookie(
   cookieHeader: string,
   name: string,
 ): string | undefined {
-  const match = cookieHeader
-    .split(";")
-    .map((c) => c.trim())
-    .find((c) => c.startsWith(`${name}=`));
-  return match?.split("=").slice(1).join("=");
+  const cookies = cookieHeader.split(";");
+  for (const cookie of cookies) {
+    const [key, ...valueParts] = cookie.trim().split("=");
+    if (key === name) {
+      const value = valueParts.join("=");
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
+  }
+  return undefined;
 }
 
 function isValidSendMessage(
@@ -56,13 +65,30 @@ function isValidTyping(
   );
 }
 
+// Simple per-user WebSocket rate limiter
+const messageRateLimits = new Map<number, { count: number; resetAt: number }>();
+const MAX_MESSAGES_PER_WINDOW = 30;
+const RATE_WINDOW_MS = 10_000;
+
+function isRateLimited(userId: number): boolean {
+  const now = Date.now();
+  const entry = messageRateLimits.get(userId);
+  if (entry && entry.resetAt > now) {
+    if (entry.count >= MAX_MESSAGES_PER_WINDOW) return true;
+    entry.count++;
+    return false;
+  }
+  messageRateLimits.set(userId, { count: 1, resetAt: now + RATE_WINDOW_MS });
+  return false;
+}
+
 export function createSocketServer(
-  server: unknown,
+  server: HttpServer,
 ): IOServer {
   const CORS_ORIGIN =
     process.env.CORS_ORIGIN || "http://localhost:5173";
 
-  io = new Server(server as never, {
+  io = new Server(server, {
     cors: {
       origin: CORS_ORIGIN,
       credentials: true,
@@ -117,6 +143,13 @@ export function createSocketServer(
 
     // Handle sending messages
     socket.on("send_message", async (data: unknown) => {
+      if (isRateLimited(user.id)) {
+        socket.emit("error", {
+          message: "Rate limited. Please slow down.",
+        });
+        return;
+      }
+
       if (!isValidSendMessage(data)) {
         socket.emit("error", {
           message:

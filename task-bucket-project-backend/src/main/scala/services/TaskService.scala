@@ -16,7 +16,7 @@ object TaskService {
   private val db = Database.db
   private val logger = LoggerFactory.getLogger(getClass)
 
-  private def validateTaskName(name: String): ValidatedNel[String, String] =
+  private def validatetaskName(name: String): ValidatedNel[String, String] =
     if name.nonEmpty then name.validNel
     else "Task name cannot be empty".invalidNel
 
@@ -105,7 +105,7 @@ object TaskService {
       case None => Left(NotFoundError("Task"))
 
   def create(bucketId: Long, name: String, description: Option[String], createdByUserId: Long): ValidatedNel[String, TaskResponse] = {
-    val validation = (validateBucketId(bucketId), validateTaskName(name)).mapN((_, _))
+    val validation = (validateBucketId(bucketId), validatetaskName(name)).mapN((_, _))
 
     validation.andThen { _ =>
       try {
@@ -113,8 +113,8 @@ object TaskService {
         val row = TaskRow(
           bucketId = bucketId,
           isTaskDone = false,
-          TaskName = name,
-          TaskDesc = description,
+          taskName = name,
+          taskDesc = description,
           createdByUserId = createdByUserId,
           createdAt = now,
           updatedAt = now
@@ -177,8 +177,8 @@ object TaskService {
         case Some(existing) =>
           val now = LocalDateTime.now()
           val updatedRow = existing.copy(
-            TaskName = name.getOrElse(existing.TaskName),
-            TaskDesc = description.getOrElse(existing.TaskDesc),
+            taskName = name.getOrElse(existing.taskName),
+            taskDesc = description.getOrElse(existing.taskDesc),
             isTaskDone = isTaskDone.getOrElse(existing.isTaskDone),
             updatedAt = now
           )
@@ -187,8 +187,8 @@ object TaskService {
               id = updatedRow.id,
               bucketId = updatedRow.bucketId,
               isTaskDone = updatedRow.isTaskDone,
-              TaskName = updatedRow.TaskName,
-              TaskDesc = updatedRow.TaskDesc,
+              taskName = updatedRow.taskName,
+              taskDesc = updatedRow.taskDesc,
               createdByUserId = updatedRow.createdByUserId,
               createdAt = updatedRow.createdAt,
               updatedAt = now
@@ -286,7 +286,7 @@ object TaskService {
     try {
       val query = Tables.tasks
         .filter(_.bucketId === bucketId)
-        .filter(_.TaskName.like(s"%$pattern%"))
+        .filter(_.taskName.like(s"%$pattern%"))
         .sortBy(_.createdAt.desc)
       val result = Await.result(db.run(query.result), 10.seconds)
       result.map(TaskResponse.fromRow)

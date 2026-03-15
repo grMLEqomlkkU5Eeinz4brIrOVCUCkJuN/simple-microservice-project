@@ -11,7 +11,7 @@ import com.typesafe.config.ConfigFactory
 
   val port = config.getInt("app.http.port")
 
-  Server(port)
+  val server = Server(port)
     .addServices(controllers.ProjectController)
     .addServices(controllers.BucketController)
     .addServices(controllers.TaskController)
@@ -39,3 +39,8 @@ import com.typesafe.config.ConfigFactory
       sb.decorator(corsBuilder.newDecorator())
     }
     .start()
+
+  Runtime.getRuntime.addShutdownHook(new Thread(() => {
+    services.RedisService.shutdown()
+    db.Database.db.close()
+  }))

@@ -13,5 +13,6 @@ object Database:
       Tables.projects.schema.createIfNotExists,
       Tables.buckets.schema.createIfNotExists,
       Tables.tasks.schema.createIfNotExists,
+      Tables.projectPermissions.schema.createIfNotExists,
     )
     Await.result(db.run(setup), 30.seconds)

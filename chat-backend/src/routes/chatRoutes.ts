@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { authMiddleware } from "../middleware/auth";
+import { rateLimit } from "../middleware/rateLimit";
 import {
   createOrGetChat,
   getChat,
@@ -16,6 +17,7 @@ export const chatRoutes = new Elysia({
   prefix: "/api/chats",
 })
   .use(authMiddleware)
+  .use(rateLimit(60, 60_000))
   .post(
     "/",
     async ({ user, body, set }) => {
